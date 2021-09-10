@@ -1,7 +1,7 @@
 package main
 
-import "go-homework/homework"
+import "go-homework/week2"
 
 func main() {
-	_ = homework.HandleError()
+	_ = week2.HandleError()
 }

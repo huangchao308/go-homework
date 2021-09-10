@@ -1,4 +1,4 @@
-package homework
+package week2
 
 import (
 	"database/sql"
