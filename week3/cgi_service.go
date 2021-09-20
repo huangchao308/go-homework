@@ -1,6 +1,7 @@
 package week3
 
 import (
+	"errors"
 	"fmt"
 	"time"
 )
@@ -9,8 +10,8 @@ type CgiService struct {
 	Name string
 }
 
-func NewCgiService() *CgiService {
-	return &CgiService{Name: "cgi_service"}
+func NewCgiService() CgiService {
+	return CgiService{Name: "cgi_service"}
 }
 
 func (cs *CgiService) Start() error {
@@ -18,13 +19,18 @@ func (cs *CgiService) Start() error {
 	time.Sleep(1 * time.Second)
 	fmt.Println("cgi_service started")
 
-	return nil
+	return errors.New("test")
 }
 
-func (cs *CgiService) ShutDown() error {
+func (cs *CgiService) Close(ch chan struct{}) error {
 	fmt.Println("begin to shut down cgi_service")
-	time.Sleep(6 * time.Second)
-	fmt.Println("cgi_service closed")
+	err := cs.DoBeforeClose()
+	ch <- struct{}{}
 
-	return nil
+	return err
+}
+
+func (cs *CgiService) DoBeforeClose() error {
+	time.Sleep(1 * time.Second)
+	return errors.New("test")
 }

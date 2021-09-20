@@ -9,11 +9,11 @@ type LogService struct {
 	Name string
 }
 
-func NewLogService() *LogService {
-	return &LogService{Name: "log_service"}
+func NewLogService() LogService {
+	return LogService{Name: "log_service"}
 }
 
-func (cs *LogService) Start() error {
+func (ls *LogService) Start() error {
 	fmt.Println("starting log_service")
 	time.Sleep(1 * time.Second)
 	fmt.Println("log_service started")
@@ -21,10 +21,15 @@ func (cs *LogService) Start() error {
 	return nil
 }
 
-func (cs *LogService) ShutDown() error {
+func (ls *LogService) Close(ch chan struct{}) error {
 	fmt.Println("begin to shut down log_service")
-	time.Sleep(1 * time.Second)
-	fmt.Println("log_service closed")
+	err := ls.DoBeforeClose()
+	ch <- struct{}{}
 
+	return err
+}
+
+func (ls *LogService) DoBeforeClose() error {
+	time.Sleep(10 * time.Second)
 	return nil
 }

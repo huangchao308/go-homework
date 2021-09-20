@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -16,21 +17,24 @@ var DefaultServerCloseSIG = []os.Signal{syscall.SIGINT, syscall.SIGTERM, syscall
 
 type Service interface {
 	Start() error
-	ShutDown() error
+	Close(c chan struct{}) error
 }
 
 type Server struct {
-	Services []Service
+	Services map[string]Service
 }
 
 // NewServer 实例化一个 server
 func NewServer() *Server {
-	return &Server{Services: make([]Service, 0, 2)}
+	return &Server{Services: make(map[string]Service)}
 }
 
 // Register 注册一个 service
-func (s *Server) Register(service Service) {
-	s.Services = append(s.Services, service)
+func (s *Server) Register(name string, service Service) {
+	_, ok := s.Services[name]
+	if !ok {
+		s.Services[name] = service
+	}
 }
 
 func (s *Server) Start() error {
@@ -40,48 +44,56 @@ func (s *Server) Start() error {
 	}
 
 	ch := make(chan os.Signal)
-
-	for _, service := range s.Services {
-		go func(srv Service) {
-			e := srv.Start()
-			if e != nil {
-				fmt.Println("Error")
-				ch <- syscall.SIGTERM
-			}
-		}(service)
+	g, _ := errgroup.WithContext(context.Background())
+	for name, service := range s.Services {
+		go func(n string, srv Service) {
+			g.Go(srv.Start)
+		}(name, service)
 	}
-
-	signal.Notify(ch, DefaultServerCloseSIG...)
+	signal.Notify(ch, DefaultServerCloseSIG...) //nolint:govet
+	err := g.Wait()
+	if err != nil {
+		fmt.Printf("err: %+v", err)
+		go func() {
+			ch <- syscall.SIGTERM
+		}()
+	}
 
 	sig := <-ch
 	fmt.Printf("\nreceive sig: %s\n", sig.String())
-	err := s.ShutDown()
+	err = s.Close()
+	if err != nil {
+		fmt.Printf("Close services err: %+v", err)
+	}
 
 	return err
 }
 
-func (s *Server) ShutDown() error {
-	ctx, cf := context.WithTimeout(context.Background(), time.Second*5)
+func (s *Server) Close() error {
+	var err error
+	ctx, cf := context.WithTimeout(context.Background(), time.Second*60)
 	defer cf()
-	g, ctx := errgroup.WithContext(ctx)
-	for _, service := range s.Services {
-		g.Go(service.ShutDown)
+	wg := sync.WaitGroup{}
+	for name, service := range s.Services {
+		wg.Add(1)
+		go func(n string, srv Service) {
+			defer wg.Done()
+			ch := make(chan struct{}, 1)
+			go func() {
+				e := srv.Close(ch)
+				if err == nil && e != nil {
+					err = e
+				}
+			}()
+			select {
+			case <-ch:
+				fmt.Printf("\nclose service %s succeed.\n", n)
+			case <-ctx.Done():
+				fmt.Printf("\nclose service %s %v.\n", n, ctx.Err())
+			}
+		}(name, service)
 	}
-
-	ch := make(chan struct{}, 1)
-
-	go func(ctx context.Context, ch chan struct{}) {
-		select {
-		case <-ch:
-			fmt.Println("All services closed")
-		case <-ctx.Done():
-			fmt.Println("time out")
-			os.Exit(-1)
-		}
-	}(ctx, ch)
-
-	_ = g.Wait()
-	ch <- struct{}{}
-
-	return nil
+	wg.Wait()
+	fmt.Println("server closed!")
+	return err
 }

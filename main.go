@@ -15,8 +15,8 @@ func main() {
 	s := week3.NewServer()
 	cgiS := week3.NewCgiService()
 	logS := week3.NewLogService()
-	s.Register(week3.Service(cgiS))
-	s.Register(week3.Service(logS))
+	s.Register(cgiS.Name, &cgiS)
+	s.Register(logS.Name, &logS)
 	if err := s.Start(); err != nil {
 		log.Fatal(err)
 	}
