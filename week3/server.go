@@ -45,10 +45,10 @@ func (s *Server) Start() error {
 
 	ch := make(chan os.Signal)
 	g, _ := errgroup.WithContext(context.Background())
-	for name, service := range s.Services {
-		go func(n string, srv Service) {
+	for _, service := range s.Services {
+		go func(srv Service) {
 			g.Go(srv.Start)
-		}(name, service)
+		}(service)
 	}
 	signal.Notify(ch, DefaultServerCloseSIG...) //nolint:govet
 	err := g.Wait()
@@ -82,12 +82,13 @@ func (s *Server) Close() error {
 			go func() {
 				e := srv.Close(ch)
 				if err == nil && e != nil {
+					cf()
 					err = e
 				}
 			}()
 			select {
 			case <-ch:
-				fmt.Printf("\nclose service %s succeed.\n", n)
+				fmt.Printf("\nclose service %s done.\n", n)
 			case <-ctx.Done():
 				fmt.Printf("\nclose service %s %v.\n", n, ctx.Err())
 			}

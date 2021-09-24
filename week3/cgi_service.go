@@ -17,7 +17,6 @@ func NewCgiService() CgiService {
 func (cs *CgiService) Start() error {
 	fmt.Println("starting cgi_service")
 	time.Sleep(1 * time.Second)
-	fmt.Println("cgi_service started")
 
 	return errors.New("test")
 }
@@ -25,9 +24,12 @@ func (cs *CgiService) Start() error {
 func (cs *CgiService) Close(ch chan struct{}) error {
 	fmt.Println("begin to shut down cgi_service")
 	err := cs.DoBeforeClose()
+	if err != nil {
+		return err
+	}
 	ch <- struct{}{}
 
-	return err
+	return nil
 }
 
 func (cs *CgiService) DoBeforeClose() error {

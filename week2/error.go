@@ -31,7 +31,7 @@ func WrapError() error {
 func HandleError() error {
 	err := WrapError()
 	if err != nil {
-		fmt.Printf("WrapError has an error[%T]: %v.\nstack: %+v", errors.Cause(err), errors.Cause(err), err)
+		fmt.Printf("WrapError has an error[%T]: %v.\nstack: %+v\n", errors.Cause(err), errors.Cause(err), err)
 		if ErrCode(errors.Cause(err)) == NotFound {
 			return nil
 		}
