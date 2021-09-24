@@ -17,7 +17,7 @@ var DefaultServerCloseSIG = []os.Signal{syscall.SIGINT, syscall.SIGTERM, syscall
 
 type Service interface {
 	Start() error
-	Close(c chan struct{}) error
+	Close(c chan error) error
 }
 
 type Server struct {
@@ -78,17 +78,20 @@ func (s *Server) Close() error {
 		wg.Add(1)
 		go func(n string, srv Service) {
 			defer wg.Done()
-			ch := make(chan struct{}, 1)
+			ch := make(chan error, 1)
 			go func() {
 				e := srv.Close(ch)
 				if err == nil && e != nil {
-					cf()
 					err = e
 				}
 			}()
 			select {
-			case <-ch:
-				fmt.Printf("\nclose service %s done.\n", n)
+			case e := <-ch:
+				if e != nil {
+					fmt.Printf("\nclose service %s err %v\n", n, e)
+				} else {
+					fmt.Printf("\nclose service %s succeed\n", n)
+				}
 			case <-ctx.Done():
 				fmt.Printf("\nclose service %s %v.\n", n, ctx.Err())
 			}

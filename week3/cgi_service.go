@@ -21,15 +21,12 @@ func (cs *CgiService) Start() error {
 	return errors.New("test")
 }
 
-func (cs *CgiService) Close(ch chan struct{}) error {
+func (cs *CgiService) Close(ch chan error) error {
 	fmt.Println("begin to shut down cgi_service")
 	err := cs.DoBeforeClose()
-	if err != nil {
-		return err
-	}
-	ch <- struct{}{}
+	ch <- err
 
-	return nil
+	return err
 }
 
 func (cs *CgiService) DoBeforeClose() error {

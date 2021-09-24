@@ -21,10 +21,10 @@ func (ls *LogService) Start() error {
 	return nil
 }
 
-func (ls *LogService) Close(ch chan struct{}) error {
+func (ls *LogService) Close(ch chan error) error {
 	fmt.Println("begin to shut down log_service")
 	err := ls.DoBeforeClose()
-	ch <- struct{}{}
+	ch <- err
 
 	return err
 }
